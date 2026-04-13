@@ -1,5 +1,5 @@
 # YouTube Music Desktop App
-### Now with a Fresh new Codebase 😉
+### Now with a Fresh new Codebase 😉 (v2)
 
 ![YouTube Music Desktop App](.github/images/readme_main_app.png)
 
@@ -9,12 +9,9 @@
 [![GitHub release][release-img]][release-url]
 [![Download][download-img]][download-url]
 
-<!--
-TODO: Write guides for v2. While these may still be helpful they are geared towards v1
 #### 📖 Guide:
 1. [How to use](https://github.com/ytmdesktop/ytmdesktop/wiki/How-use)
 2. [FAQ](https://github.com/ytmdesktop/ytmdesktop/wiki/FAQ)
--->
 
 # ⬇️ Download at
 <a href="https://repology.org/project/ytmdesktop/versions">
@@ -22,19 +19,11 @@ TODO: Write guides for v2. While these may still be helpful they are geared towa
 </a>
 
 #### Windows
-<!--
-### UPDATE THESE PLATFORMS ###
-- Chocolatey: ```choco install ytmdesktop```
--->
 - Winget: ```winget install "YouTube Music Desktop App"``` or ```winget install Ytmdesktop.Ytmdesktop```
 - Scoop: ```scoop bucket add extras``` then ```scoop install ytmdesktop``` (Community Maintained)
 - Binaries: <https://github.com/ytmdesktop/ytmdesktop/releases>
 
 #### Linux
-<!--
-### UPDATE THESE PLATFORMS ###
-- Snap: <https://snapcraft.io/youtube-music-desktop-app>
--->
 - Arch Linux (AUR): <https://aur.archlinux.org/packages/ytmdesktop> (Community Maintained)
 - Binaries: <https://github.com/ytmdesktop/ytmdesktop/releases>
 
@@ -43,7 +32,11 @@ TODO: Write guides for v2. While these may still be helpful they are geared towa
 - Binaries: <https://github.com/ytmdesktop/ytmdesktop/releases>
 
 # Developing
-To clone and run this repository you'll need [Git](https://git-scm.com) and [Node.js (v20)](https://nodejs.org/en/download/) (which comes with [npm](http://npmjs.com)) installed on your computer. From your command line:
+To clone and run this repository you'll need [Git](https://git-scm.com), [Node.js (v20)](https://nodejs.org/en/download/) and [Yarn](https://yarnpkg.com/) installed on your computer.
+
+The project has been rewritten from scratch using TypeScript, Vite, Vue, and Electron Forge.
+
+From your command line:
 
 ```sh
 # Clone this repository
@@ -53,47 +46,35 @@ cd ytmdesktop
 ```
 ##### And:
 ```sh
-# If you do not have Yarn Installed / New to Node as a whole you can enable Yarn with:
+# Enable corepack for Yarn 4+ support
 corepack enable
 
 # Install dependencies
 yarn install
-# Run the app
+
+# Run the app in development mode
 yarn start
 ```
 
 # Building the Project
-To build for your platform you need to run `yarn make`, however please see the information below regarding the required additionally Software, Tools and Packages which are needed to successfully package into a nice installer file.
+To package and build the project for your platform, you need to run `yarn make`.
+
+This uses Electron Forge to compile the Vite bundles and package them into the appropriate installer files.
 
 ## Windows
-To download the full suite of Tools/Software needed to build the app it is recommended to install the suite of build tools that electron provide which includes Visual Studio, Python and other tools.
+To build on Windows, you will need the full suite of Tools/Software required to build native modules. It is recommended to install the suite of build tools that Electron provides, which includes Visual Studio build tools, Python, and other dependencies.
 
+Run as Administrator:
 `npm i -g @electron/build-tools`
 
-This will start downloading and installing, and may require a few prompts here and there to finalise everything.
-
-<!--
-TODO: Fill this information in
-## MacOS
-*to do*
--->
+This will start downloading and installing the required dependencies and may require a few prompts here and there to finalise everything.
 
 ## Linux
 Building the project on Linux only requires you to install:
 - For building on Debian based Linux Distros like Ubuntu, you will need to install `fakeroot` and `dpkg`
 - For building on RedHat based Linux Distros like Fedora, you will need to install `rpm` or `rpm-build`
 
-*please note that by default both packages are built if you try building this application on a linux distro*
-
-<!--
-### Note to the note, I suspect this has been fixed now, testing myself I was able to run the software without anything extra, although did have to sepecify `--disable-gpu` to run.
-**Note:** If you're using Windows Subsystem for Linux (WSL2), [see this guide][more] or use `node` from the command prompt. -->
-
-<!--
-Project currently doesn't have Locales, so Ignore this for now.
-## To contribute for your own language
-Navigate to [ytmdesktop-locales](https://github.com/ytmdesktop/ytmdesktop-locales) and follow the instructions there.
--->
+*please note that by default both deb and rpm packages are built if you try building this application on a linux distro*
 
 ## Contributors
 
