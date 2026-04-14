@@ -28,30 +28,17 @@ impl MediaControlsWrapper {
             Ok(mut controls) => {
                 let app_handle_clone = app_handle.clone();
                 controls
-                    .attach(move |event| match event {
-                        MediaControlEvent::Play => {
-                            if let Some(window) = app_handle_clone.get_webview_window("main") {
-                                let _ = window.eval("document.querySelector('video').play();");
-                            }
+                    .attach(move |event| {
+                        let js = match event {
+                            MediaControlEvent::Play => "document.querySelector('video').play();",
+                            MediaControlEvent::Pause => "document.querySelector('video').pause();",
+                            MediaControlEvent::Next => "document.querySelector('.next-button').click();",
+                            MediaControlEvent::Previous => "document.querySelector('.previous-button').click();",
+                            _ => return,
+                        };
+                        if let Some(window) = app_handle_clone.get_webview_window("main") {
+                            let _ = window.eval(js);
                         }
-                        MediaControlEvent::Pause => {
-                            if let Some(window) = app_handle_clone.get_webview_window("main") {
-                                let _ = window.eval("document.querySelector('video').pause();");
-                            }
-                        }
-                        MediaControlEvent::Next => {
-                            if let Some(window) = app_handle_clone.get_webview_window("main") {
-                                let _ =
-                                    window.eval("document.querySelector('.next-button').click();");
-                            }
-                        }
-                        MediaControlEvent::Previous => {
-                            if let Some(window) = app_handle_clone.get_webview_window("main") {
-                                let _ = window
-                                    .eval("document.querySelector('.previous-button').click();");
-                            }
-                        }
-                        _ => {}
                     })
                     .expect("Failed to attach media controls");
 

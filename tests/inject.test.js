@@ -63,4 +63,38 @@ describe('YouTube Music DOM Extractor', () => {
     const state = extractTrackState(document);
     expect(state).toBeNull();
   });
+
+  it('falls back to byline text when no artist link exists', () => {
+    document.body.innerHTML = `
+      <yt-formatted-string class="title style-scope ytmusic-player-bar">Unknown Track</yt-formatted-string>
+      <yt-formatted-string class="byline style-scope ytmusic-player-bar">Various Artists • Compilation • 2024</yt-formatted-string>
+      <img id="thumbnail" class="style-scope ytmusic-player-bar" src="thumb.jpg">
+      <tp-yt-paper-icon-button id="play-pause-button" title="Pause"></tp-yt-paper-icon-button>
+    `;
+
+    const state = extractTrackState(document);
+    expect(state.artist).toBe('Various Artists');
+  });
+
+  it('returns null when play-pause button is missing', () => {
+    document.body.innerHTML = `
+      <yt-formatted-string class="title style-scope ytmusic-player-bar">Song</yt-formatted-string>
+      <yt-formatted-string class="byline style-scope ytmusic-player-bar"><a href="#">Artist</a></yt-formatted-string>
+      <img id="thumbnail" class="style-scope ytmusic-player-bar" src="thumb.jpg">
+    `;
+
+    const state = extractTrackState(document);
+    expect(state).toBeNull();
+  });
+
+  it('returns null when thumbnail is missing', () => {
+    document.body.innerHTML = `
+      <yt-formatted-string class="title style-scope ytmusic-player-bar">Song</yt-formatted-string>
+      <yt-formatted-string class="byline style-scope ytmusic-player-bar"><a href="#">Artist</a></yt-formatted-string>
+      <tp-yt-paper-icon-button id="play-pause-button" title="Pause"></tp-yt-paper-icon-button>
+    `;
+
+    const state = extractTrackState(document);
+    expect(state).toBeNull();
+  });
 });

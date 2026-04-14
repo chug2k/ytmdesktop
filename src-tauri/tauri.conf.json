@@ -1,21 +1,13 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "YouTube Music",
+  "productName": "YTM Yagami",
   "version": "0.1.0",
-  "identifier": "com.ytmdesktop.tauri",
+  "identifier": "com.charleslee.ytmyagami",
   "build": {
     "frontendDist": "../src"
   },
   "app": {
     "withGlobalTauri": true,
-    "windows": [
-      {
-        "title": "YouTube Music",
-        "width": 800,
-        "height": 600,
-        "url": "https://music.youtube.com"
-      }
-    ],
     "security": {
       "csp": null
     }
