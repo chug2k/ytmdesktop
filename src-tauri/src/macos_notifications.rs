@@ -72,9 +72,14 @@ fn download_album_art(url: &str) -> Result<PathBuf, Box<dyn Error + Send + Sync>
     let dir = std::env::temp_dir().join("com.ytmyagami.desktop-notifications");
     fs::create_dir_all(&dir)?;
 
-    let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
-    let path = dir.join(format!("album-art-{ts}.{ext}"));
+    // Clean up old album art files
+    if let Ok(entries) = fs::read_dir(&dir) {
+        for entry in entries.flatten() {
+            let _ = fs::remove_file(entry.path());
+        }
+    }
 
+    let path = dir.join(format!("album-art.{ext}"));
     fs::write(&path, &bytes)?;
     Ok(path)
 }

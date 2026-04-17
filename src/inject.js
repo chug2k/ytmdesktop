@@ -3,42 +3,59 @@
   window.__ytm_injected = true;
 
   function extractTrackState() {
-    const titleEl = document.querySelector('yt-formatted-string.title.ytmusic-player-bar');
-    const bylineEl = document.querySelector('yt-formatted-string.byline.ytmusic-player-bar');
-    const playPauseButton = document.querySelector('#play-pause-button');
+    var titleEl = document.querySelector('yt-formatted-string.title.ytmusic-player-bar');
+    var bylineEl = document.querySelector('yt-formatted-string.byline.ytmusic-player-bar');
+    var playPauseButton = document.querySelector('#play-pause-button');
+    if (!titleEl || !bylineEl || !playPauseButton) return null;
 
-    if (!titleEl || !bylineEl || !playPauseButton) {
-      return null;
-    }
-    const title = titleEl.textContent;
-    const artistLink = bylineEl.querySelector('a');
-    const artist = artistLink ? artistLink.textContent : bylineEl.textContent.split(' \u2022 ')[0];
-    const thumbnailEl = document.querySelector('img.ytmusic-player-bar')
+    var title = titleEl.textContent;
+    var artistLink = bylineEl.querySelector('a');
+    var artist = artistLink ? artistLink.textContent : bylineEl.textContent.split(' \u2022 ')[0];
+    var thumbnailEl = document.querySelector('img.ytmusic-player-bar')
       || document.querySelector('.ytmusic-player-bar img')
       || document.querySelector('#song-image img');
-    const art = thumbnailEl ? thumbnailEl.src : '';
-    const isPlaying = playPauseButton.getAttribute('title') === 'Pause';
+    var art = thumbnailEl ? thumbnailEl.src : '';
+    var isPlaying = playPauseButton.getAttribute('title') === 'Pause';
 
-    return { title, artist, art, isPlaying };
+    return { title: title, artist: artist, art: art, isPlaying: isPlaying };
   }
 
-  let lastStateJson = null;
+  var lastStateJson = null;
 
-  console.log('[YTM Yagami] inject.js loaded');
-
-  setInterval(() => {
-    const state = extractTrackState();
+  function sendIfChanged() {
+    var state = extractTrackState();
     if (!state) return;
 
-    const json = JSON.stringify(state);
+    var json = JSON.stringify(state);
     if (json === lastStateJson) return;
     lastStateJson = json;
 
-    console.log('[YTM Yagami] Track changed:', state.title, '-', state.artist);
-
     if (window.__TAURI_INTERNALS__ && window.__TAURI_INTERNALS__.invoke) {
       window.__TAURI_INTERNALS__.invoke('handle_track_changed', { payload: state })
-        .catch(function(err) { console.error('[YTM Yagami] invoke failed:', err); });
+        .catch(function() {});
     }
-  }, 1000);
+  }
+
+  // Use MutationObserver on the player bar for event-driven updates
+  function observePlayerBar() {
+    var playerBar = document.querySelector('ytmusic-player-bar');
+    if (!playerBar) return false;
+
+    var observer = new MutationObserver(sendIfChanged);
+    observer.observe(playerBar, { childList: true, subtree: true, attributes: true, characterData: true });
+    return true;
+  }
+
+  // Try to attach observer, fall back to polling until player bar exists
+  if (!observePlayerBar()) {
+    var pollId = setInterval(function() {
+      if (observePlayerBar()) {
+        clearInterval(pollId);
+        sendIfChanged();
+      }
+    }, 1000);
+  }
+
+  // Also check on play/pause which may not trigger mutation
+  setInterval(sendIfChanged, 2000);
 })();

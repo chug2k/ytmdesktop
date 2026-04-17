@@ -74,6 +74,11 @@ void ytm_notifications_show(
     dispatch_async(dispatch_get_main_queue(), ^{
         ytm_ensure_delegate();
 
+        // Clear previous track notifications
+        UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+        [center removeAllDeliveredNotifications];
+        [center removeAllPendingNotificationRequests];
+
         UNMutableNotificationContent *content = [UNMutableNotificationContent new];
         content.title = nsTitle;
         content.subtitle = nsSubtitle;

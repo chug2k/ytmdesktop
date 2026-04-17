@@ -16,12 +16,10 @@ impl MediaControlsWrapper {
     }
 
     pub fn init(&self, app_handle: AppHandle) {
-        let hwnd = None; // souvlaki handles missing hwnd in newer versions by default
-
         let config = PlatformConfig {
             dbus_name: "com.ytmdesktop.tauri",
             display_name: "YouTube Music",
-            hwnd,
+            hwnd: None,
         };
 
         match MediaControls::new(config) {

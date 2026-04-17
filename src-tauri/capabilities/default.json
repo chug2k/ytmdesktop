@@ -7,7 +7,6 @@
     "urls": ["https://music.youtube.com/*", "https://*.youtube.com/*", "https://accounts.google.com/*"]
   },
   "permissions": [
-    "core:default",
-    "opener:default"
+    "core:default"
   ]
 }

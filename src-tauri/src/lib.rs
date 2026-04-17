@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use tauri::Manager;
 
+const CHROME_UA: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
+
 mod media;
 use media::MediaControlsWrapper;
 
@@ -17,13 +19,11 @@ pub struct TrackState {
     pub is_playing: bool,
 }
 
-// Store the last track title to prevent duplicate notifications
 pub struct AppState {
     pub last_title: Mutex<String>,
     pub media_controls: MediaControlsWrapper,
 }
 
-// Function to handle the state update logic so it's easily testable without the Tauri App Handle
 pub fn should_notify_track_change(new_track: &TrackState, last_title: &mut String) -> bool {
     if *last_title != new_track.title && new_track.is_playing {
         *last_title = new_track.title.clone();
@@ -45,13 +45,10 @@ fn handle_track_changed(
     state: tauri::State<'_, AppState>,
     app: tauri::AppHandle,
 ) {
-    println!("[YTM Yagami] handle_track_changed: {} - {} (playing: {})", payload.title, payload.artist, payload.is_playing);
-
     state.media_controls.update(&payload);
 
     let mut last_title = state.last_title.lock().unwrap();
     if should_notify_track_change(&payload, &mut last_title) {
-        println!("[YTM Yagami] Sending notification for: {}", payload.title);
         let title = payload.title.clone();
         let artist = payload.artist.clone();
         let art = payload.art.clone();
@@ -70,7 +67,6 @@ fn handle_track_changed(
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
         .manage(AppState {
             last_title: Mutex::new(String::new()),
             media_controls: MediaControlsWrapper::new(),
@@ -86,20 +82,16 @@ pub fn run() {
             )
             .title("YouTube Music")
             .inner_size(1024.0, 768.0)
-            .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36")
+            .user_agent(CHROME_UA)
             .initialization_script(include_str!("../../src/chrome_spoof.js"))
             .on_page_load(|window, payload| {
-                println!("[YTM Yagami] on_page_load: {:?} url={}", payload.event(), payload.url());
                 if matches!(payload.event(), tauri::webview::PageLoadEvent::Finished) {
                     let host = payload.url().host_str().unwrap_or_default();
-                    println!("[YTM Yagami] Page finished loading, host={}", host);
+                    if host.ends_with("google.com") || host.ends_with("youtube.com") {
+                        let _ = window.eval(include_str!("../../src/chrome_spoof.js"));
+                    }
                     if host == "music.youtube.com" || host.ends_with(".youtube.com") {
-                        println!("[YTM Yagami] Injecting script...");
-                        match window.eval(include_str!("../../src/inject.js")) {
-                            Ok(_) => println!("[YTM Yagami] eval() succeeded"),
-                            Err(e) => eprintln!("[YTM Yagami] eval() failed: {}", e),
-                        }
-                        window.open_devtools();
+                        let _ = window.eval(include_str!("../../src/inject.js"));
                     }
                 }
             })

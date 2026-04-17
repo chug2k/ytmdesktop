@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="app-icon.png" alt="YTM Yagami icon" width="128" />
+</p>
+
 # YTM Yagami
 
 > *It's light.*
