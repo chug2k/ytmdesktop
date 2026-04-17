@@ -90,7 +90,7 @@ pub fn run() {
                     if host.ends_with("google.com") || host.ends_with("youtube.com") {
                         let _ = window.eval(include_str!("../../src/chrome_spoof.js"));
                     }
-                    if host == "music.youtube.com" || host.ends_with(".youtube.com") {
+                    if host.ends_with(".youtube.com") {
                         let _ = window.eval(include_str!("../../src/inject.js"));
                     }
                 }

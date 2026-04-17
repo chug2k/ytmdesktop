@@ -1,10 +1,12 @@
 // Spoof Chrome environment for YouTube Music and Google OAuth compatibility.
 // Also forces postMessage IPC transport (ipc:// is blocked on external URLs).
 (function() {
+  if (window.__ytm_spoof_applied) return;
+  window.__ytm_spoof_applied = true;
+
   var CHROME_VERSION = '125';
   var CHROME_FULL_VERSION = '125.0.6422.142';
 
-  // Force postMessage transport — ipc:// custom protocol is blocked on HTTPS pages
   var originalFetch = window.fetch;
   window.fetch = function(url) {
     if (typeof url === 'string' && url.startsWith('ipc://')) {

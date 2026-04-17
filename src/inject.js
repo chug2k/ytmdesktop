@@ -36,17 +36,27 @@
     }
   }
 
-  // Use MutationObserver on the player bar for event-driven updates
+  // Player bar mutates many times per second (progress bar, time text);
+  // coalesce bursts into one check per frame.
+  var rafScheduled = false;
+  function scheduleCheck() {
+    if (rafScheduled) return;
+    rafScheduled = true;
+    requestAnimationFrame(function() {
+      rafScheduled = false;
+      sendIfChanged();
+    });
+  }
+
   function observePlayerBar() {
     var playerBar = document.querySelector('ytmusic-player-bar');
     if (!playerBar) return false;
 
-    var observer = new MutationObserver(sendIfChanged);
+    var observer = new MutationObserver(scheduleCheck);
     observer.observe(playerBar, { childList: true, subtree: true, attributes: true, characterData: true });
     return true;
   }
 
-  // Try to attach observer, fall back to polling until player bar exists
   if (!observePlayerBar()) {
     var pollId = setInterval(function() {
       if (observePlayerBar()) {
@@ -55,7 +65,4 @@
       }
     }, 1000);
   }
-
-  // Also check on play/pause which may not trigger mutation
-  setInterval(sendIfChanged, 2000);
 })();
