@@ -4,3 +4,13 @@
 /.yarn/plugins/** binary
 /src/assets/** binary
 /.github/images/** binary
+
+# Binary assets. Without these, `* text eol=lf` rewrites the CRLF bytes inside
+# PNG headers and the committed icons no longer decode.
+*.png binary
+*.ico binary
+*.icns binary
+*.jpg binary
+*.gif binary
+*.woff binary
+*.woff2 binary
