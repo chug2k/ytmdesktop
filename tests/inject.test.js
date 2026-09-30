@@ -1,100 +1,149 @@
-import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { afterEach, describe, expect, it } from 'vitest';
 
-function extractTrackState(doc) {
-  const titleEl = doc.querySelector('yt-formatted-string.title.ytmusic-player-bar');
-  const bylineEl = doc.querySelector('yt-formatted-string.byline.ytmusic-player-bar');
-  const thumbnailEl = doc.querySelector('img#thumbnail.ytmusic-player-bar');
-  const playPauseButton = doc.querySelector('#play-pause-button');
+// Load and execute the *shipped* injector rather than a copy of it. The previous
+// version of this file defined its own `extractTrackState`, which drifted out of
+// sync with src/inject.js and ended up asserting the opposite behaviour.
+//
+// Resolved via strings, not `new URL(...)`: under the jsdom environment the
+// global `URL` is jsdom's, and `readFileSync` rejects it as a non-file URL.
+const HERE = dirname(fileURLToPath(import.meta.url));
+const INJECT_SOURCE = readFileSync(resolve(HERE, '../src/inject.js'), 'utf8');
 
-  if (!titleEl || !bylineEl || !thumbnailEl || !playPauseButton) {
-    return null;
-  }
-  const title = titleEl.textContent;
-  const artistLink = bylineEl.querySelector('a');
-  const artist = artistLink ? artistLink.textContent : bylineEl.textContent.split(' • ')[0];
-  const art = thumbnailEl.src;
-  const isPlaying = playPauseButton.getAttribute('title') === 'Pause';
-
-  return { title, artist, art, isPlaying };
+function loadInjector() {
+  delete window.__ytm_injected;
+  delete window.__ytmYagamiInternals;
+  new Function(INJECT_SOURCE).call(window);
+  return window.__ytmYagamiInternals;
 }
 
-describe('YouTube Music DOM Extractor', () => {
-  it('extracts track title, artist, and album art from the DOM', () => {
-    // Mock the DOM elements that YouTube Music uses
-    document.body.innerHTML = `
-      <yt-formatted-string class="title style-scope ytmusic-player-bar">Never Gonna Give You Up</yt-formatted-string>
-      <span class="subtitle style-scope ytmusic-player-bar">
-        <yt-formatted-string class="byline style-scope ytmusic-player-bar">
-          <a href="/channel/UC38IQsAvIsxxjztdMZQvwEA">Rick Astley</a> • <a href="/browse/MPREb_k0xWqKkxA7U">Whenever You Need Somebody</a> • <span>1987</span>
-        </yt-formatted-string>
-      </span>
-      <img id="thumbnail" class="style-scope ytmusic-player-bar" src="https://lh3.googleusercontent.com/art_url=w544-h544-l90-rj">
-      <tp-yt-paper-icon-button id="play-pause-button" title="Pause"></tp-yt-paper-icon-button>
-    `;
+/** jsdom's `paused` is a read-only getter, so state has to be stubbed on. */
+function setPaused(paused) {
+  const video = document.querySelector('video');
+  Object.defineProperty(video, 'paused', { value: paused, configurable: true });
+}
 
-    const state = extractTrackState(document);
+const PLAYER_BAR = `
+  <ytmusic-player-bar>
+    <yt-formatted-string class="title style-scope ytmusic-player-bar">Never Gonna Give You Up</yt-formatted-string>
+    <span class="subtitle style-scope ytmusic-player-bar">
+      <yt-formatted-string class="byline style-scope ytmusic-player-bar">
+        <a href="/channel/UC38IQsAvIsxxjztdMZQvwEA">Rick Astley</a> • <a href="/browse/MPREb_k0xWqKkxA7U">Whenever You Need Somebody</a> • <span>1987</span>
+      </yt-formatted-string>
+    </span>
+    <img id="thumbnail" class="style-scope ytmusic-player-bar" src="https://lh3.googleusercontent.com/art?w=544">
+    <tp-yt-paper-icon-button id="play-pause-button" title="Pause"></tp-yt-paper-icon-button>
+  </ytmusic-player-bar>
+  <video></video>
+`;
 
-    expect(state).toEqual({
+let internals;
+
+afterEach(() => {
+  // The injector installs a MutationObserver and possibly a 1s poll.
+  internals?.stop();
+  internals = undefined;
+  document.body.innerHTML = '';
+});
+
+describe('extractTrackState', () => {
+  it('extracts title, artist, and album art from the player bar', () => {
+    document.body.innerHTML = PLAYER_BAR;
+    internals = loadInjector();
+    setPaused(false);
+
+    expect(internals.extractTrackState(document)).toEqual({
       title: 'Never Gonna Give You Up',
       artist: 'Rick Astley',
-      art: 'https://lh3.googleusercontent.com/art_url=w544-h544-l90-rj',
+      art: 'https://lh3.googleusercontent.com/art?w=544',
       isPlaying: true
     });
   });
 
-  it('handles paused state correctly', () => {
-    document.body.innerHTML = `
-      <yt-formatted-string class="title style-scope ytmusic-player-bar">Song Name</yt-formatted-string>
-      <span class="subtitle style-scope ytmusic-player-bar">
-        <yt-formatted-string class="byline style-scope ytmusic-player-bar">
-          <a href="#">Artist Name</a>
-        </yt-formatted-string>
-      </span>
-      <img id="thumbnail" class="style-scope ytmusic-player-bar" src="img.jpg">
-      <tp-yt-paper-icon-button id="play-pause-button" title="Play"></tp-yt-paper-icon-button>
-    `;
+  it('reports paused when the video element is paused', () => {
+    document.body.innerHTML = PLAYER_BAR;
+    internals = loadInjector();
+    setPaused(true);
 
-    const state = extractTrackState(document);
-    expect(state.isPlaying).toBe(false);
+    expect(internals.extractTrackState(document).isPlaying).toBe(false);
   });
 
-  it('returns null if elements are missing', () => {
-    document.body.innerHTML = `<div>Not the player</div>`;
-    const state = extractTrackState(document);
-    expect(state).toBeNull();
+  it('reports playing on a non-English UI, where the button title is localized', () => {
+    // Regression test: reading `title === 'Pause'` reported permanently-paused
+    // on localized UIs, which silently disabled notifications entirely.
+    document.body.innerHTML = PLAYER_BAR.replace('title="Pause"', 'title="Anhalten"');
+    internals = loadInjector();
+    setPaused(false);
+
+    expect(internals.extractTrackState(document).isPlaying).toBe(true);
+  });
+
+  it('returns empty art rather than null when no thumbnail is present', () => {
+    document.body.innerHTML = PLAYER_BAR.replace(/<img[^>]*>/, '');
+    internals = loadInjector();
+    setPaused(false);
+
+    const state = internals.extractTrackState(document);
+    expect(state).not.toBeNull();
+    expect(state.art).toBe('');
   });
 
   it('falls back to byline text when no artist link exists', () => {
     document.body.innerHTML = `
-      <yt-formatted-string class="title style-scope ytmusic-player-bar">Unknown Track</yt-formatted-string>
-      <yt-formatted-string class="byline style-scope ytmusic-player-bar">Various Artists • Compilation • 2024</yt-formatted-string>
-      <img id="thumbnail" class="style-scope ytmusic-player-bar" src="thumb.jpg">
-      <tp-yt-paper-icon-button id="play-pause-button" title="Pause"></tp-yt-paper-icon-button>
+      <ytmusic-player-bar>
+        <yt-formatted-string class="title style-scope ytmusic-player-bar">Unknown Track</yt-formatted-string>
+        <yt-formatted-string class="byline style-scope ytmusic-player-bar">Various Artists • Compilation • 2024</yt-formatted-string>
+      </ytmusic-player-bar>
+      <video></video>
     `;
+    internals = loadInjector();
+    setPaused(false);
 
-    const state = extractTrackState(document);
-    expect(state.artist).toBe('Various Artists');
+    expect(internals.extractTrackState(document).artist).toBe('Various Artists');
   });
 
-  it('returns null when play-pause button is missing', () => {
-    document.body.innerHTML = `
-      <yt-formatted-string class="title style-scope ytmusic-player-bar">Song</yt-formatted-string>
-      <yt-formatted-string class="byline style-scope ytmusic-player-bar"><a href="#">Artist</a></yt-formatted-string>
-      <img id="thumbnail" class="style-scope ytmusic-player-bar" src="thumb.jpg">
-    `;
+  it('returns null when the player bar has not rendered yet', () => {
+    document.body.innerHTML = `<div>Not the player</div>`;
+    internals = loadInjector();
 
-    const state = extractTrackState(document);
-    expect(state).toBeNull();
+    expect(internals.extractTrackState(document)).toBeNull();
   });
 
-  it('returns null when thumbnail is missing', () => {
+  it('returns null when the title is missing', () => {
     document.body.innerHTML = `
-      <yt-formatted-string class="title style-scope ytmusic-player-bar">Song</yt-formatted-string>
-      <yt-formatted-string class="byline style-scope ytmusic-player-bar"><a href="#">Artist</a></yt-formatted-string>
-      <tp-yt-paper-icon-button id="play-pause-button" title="Pause"></tp-yt-paper-icon-button>
+      <ytmusic-player-bar>
+        <yt-formatted-string class="byline style-scope ytmusic-player-bar"><a href="#">Artist</a></yt-formatted-string>
+      </ytmusic-player-bar>
+      <video></video>
     `;
+    internals = loadInjector();
 
-    const state = extractTrackState(document);
-    expect(state).toBeNull();
+    expect(internals.extractTrackState(document)).toBeNull();
+  });
+});
+
+describe('extractIsPlaying', () => {
+  it('prefers the video element over the localized button title', () => {
+    document.body.innerHTML = PLAYER_BAR.replace('title="Pause"', 'title="Play"');
+    internals = loadInjector();
+    setPaused(false);
+
+    expect(internals.extractIsPlaying(document)).toBe(true);
+  });
+
+  it('falls back to the button title when there is no video element', () => {
+    document.body.innerHTML = PLAYER_BAR.replace('<video></video>', '');
+    internals = loadInjector();
+
+    expect(internals.extractIsPlaying(document)).toBe(true);
+  });
+
+  it('returns null when neither a video nor a play/pause button exists', () => {
+    document.body.innerHTML = `<div></div>`;
+    internals = loadInjector();
+
+    expect(internals.extractIsPlaying(document)).toBeNull();
   });
 });

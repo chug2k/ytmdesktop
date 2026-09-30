@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "tauri": "tauri",
-    "test": "vitest run tests/inject.test.js --environment jsdom"
+    "test": "vitest run --environment jsdom",
+    "test:watch": "vitest --environment jsdom"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",

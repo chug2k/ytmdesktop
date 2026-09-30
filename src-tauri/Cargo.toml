@@ -14,15 +14,44 @@ edition = "2021"
 name = "ytm_yagami_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+# The whole point of this app is being small. Without these the binary ships
+# unstripped with no LTO (~13.6 MB); with them it is a fraction of that.
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 cc = "1"
 
 [dependencies]
-tauri = { version = "2", features = ["devtools"] }
+# No "devtools" feature: it is `cfg(any(debug_assertions, feature = "devtools"))`
+# upstream, so dev builds keep the inspector and release builds do not ship it.
+tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+url = "2"
 souvlaki = "0.8.3"
 open = "5"
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
 infer = "0.19"
+
+# Phone passkey sign-in (caBLE v2 / "hybrid"). macOS only: WKWebView cannot
+# use passkeys for google.com, so the app talks to the phone itself.
+# `ring`, `rustls` and `webpki-roots` are already in the tree through reqwest.
+[target.'cfg(target_os = "macos")'.dependencies]
+ring = "0.17"
+aes = "0.8"
+base64 = "0.22"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+webpki-roots = "1"
+tungstenite = { version = "0.27", default-features = false, features = ["handshake", "__rustls-tls"] }
+qrcode = { version = "0.14", default-features = false }
+
+[target.'cfg(target_os = "macos")'.dev-dependencies]
+# Test-only: the phone side of the Noise handshake needs two ECDH operations
+# per key, which `ring` does not allow.
+p256 = { version = "0.13", features = ["ecdh"] }

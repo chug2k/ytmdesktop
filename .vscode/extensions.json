@@ -1,3 +1,8 @@
 {
-  "recommendations": ["esbenp.prettier-vscode", "vue.volar", "dbaeumer.vscode-eslint", "editorconfig.editorconfig"]
+  "recommendations": [
+    "rust-lang.rust-analyzer",
+    "tauri-apps.tauri-vscode",
+    "vadimcn.vscode-lldb",
+    "editorconfig.editorconfig"
+  ]
 }

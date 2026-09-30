@@ -16,19 +16,19 @@ A lightweight desktop app for YouTube Music, built with [Tauri](https://tauri.ap
 
 - Native desktop window for YouTube Music
 - OS media controls (play/pause/next/previous via keyboard media keys)
-- Track change notifications
-- ~3 MB download (vs ~200 MB for Electron-based alternatives)
+- Track change notifications with album art
+- ~5 MB download (vs ~200 MB for Electron-based alternatives)
 
-## Install
+## Status
 
-### macOS (Apple Silicon)
+macOS is the supported platform. Linux and Windows build from source and run, but
+**native notifications are macOS-only** right now — the notification bridge is
+implemented against `UNUserNotificationCenter`. Media controls work on all three.
 
-1. Go to the [Releases page](https://github.com/chug2k/ytmdesktop/releases/latest)
-2. Download the `.dmg` file
-3. Open it and drag **YTM Yagami** to your Applications folder
-4. If macOS blocks it, go to **System Settings > Privacy & Security** and click **Open Anyway**
+There is no signed release yet, so the only install path today is building from
+source. See [docs/RELEASING.md](docs/RELEASING.md) for what signing still needs.
 
-### Build from source (macOS, Linux, Windows)
+## Build from source
 
 You'll need [Node.js](https://nodejs.org) (v18+) and [Rust](https://rustup.rs) installed.
 
@@ -51,9 +51,26 @@ npx tauri dev
 ## Tests
 
 ```sh
-# JavaScript tests
-npm test
-
-# Rust tests
-cd src-tauri && cargo test
+npm test                      # JS (vitest + jsdom)
+cd src-tauri && cargo test    # Rust
 ```
+
+Lint, matching what CI enforces:
+
+```sh
+cd src-tauri
+cargo fmt --check
+cargo clippy --all-targets -- -D warnings
+```
+
+## Lineage
+
+This started life as a fork of [ytmdesktop/ytmdesktop](https://github.com/ytmdesktop/ytmdesktop),
+an excellent Electron-based YouTube Music desktop app, and the original is worth
+your attention if you want a more featureful, more mature application.
+
+YTM Yagami no longer shares any code with it. The Electron application was
+replaced wholesale by a Rust/Tauri one; nothing from the original source tree
+survives. The debt is one of inspiration and prior art, not of code.
+
+Not affiliated with Google or YouTube.

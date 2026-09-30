@@ -20,6 +20,21 @@
 
 static YTMNotificationDelegate *g_delegate = nil;
 
+// UNUserNotificationCenter throws, and so aborts the process, when the binary
+// is not inside a .app bundle. `tauri dev` runs the binary that way. There,
+// notifications are skipped and the rest of the app runs.
+static BOOL ytm_notifications_available(void) {
+    static BOOL available = NO;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        available = [[[NSBundle mainBundle] bundleURL].pathExtension isEqualToString:@"app"];
+        if (!available) {
+            NSLog(@"[YTM Yagami] not running from a .app bundle; notifications disabled");
+        }
+    });
+    return available;
+}
+
 static void ytm_ensure_delegate(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -29,6 +44,8 @@ static void ytm_ensure_delegate(void) {
 }
 
 void ytm_notifications_request_authorization(void) {
+    if (!ytm_notifications_available()) return;
+
     dispatch_async(dispatch_get_main_queue(), ^{
         ytm_ensure_delegate();
 
@@ -55,6 +72,8 @@ void ytm_notifications_show(
     const char *subtitle,
     const char *image_path
 ) {
+    if (!ytm_notifications_available()) return;
+
     NSString *nsIdentifier = (identifier && identifier[0] != '\0')
         ? [NSString stringWithUTF8String:identifier]
         : [[NSUUID UUID] UUIDString];
