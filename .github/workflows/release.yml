@@ -49,18 +49,37 @@ jobs:
 
       - run: npm ci
 
+      # macOS signing + notarization. tauri-action tries to sign whenever
+      # APPLE_CERTIFICATE is set, even to an empty string, so the variables are
+      # exported only when the secrets exist. Without them the build is
+      # unsigned and Gatekeeper blocks it on other people's machines. See
+      # docs/RELEASING.md.
+      - name: Configure macOS signing
+        if: runner.os == 'macOS'
+        env:
+          CERT: ${{ secrets.APPLE_CERTIFICATE }}
+          CERT_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          NOTARY_ID: ${{ secrets.APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -z "$CERT" ]; then
+            echo "::warning::APPLE_CERTIFICATE is not set; building an unsigned bundle."
+            exit 0
+          fi
+          {
+            echo "APPLE_CERTIFICATE=$CERT"
+            echo "APPLE_CERTIFICATE_PASSWORD=$CERT_PASSWORD"
+            echo "APPLE_SIGNING_IDENTITY=$IDENTITY"
+            echo "APPLE_ID=$NOTARY_ID"
+            echo "APPLE_PASSWORD=$NOTARY_PASSWORD"
+            echo "APPLE_TEAM_ID=$TEAM_ID"
+          } >> "$GITHUB_ENV"
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS signing + notarization. Until these secrets exist the build
-          # still succeeds, but produces an unsigned bundle that Gatekeeper
-          # blocks on other people's machines. See docs/RELEASING.md.
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'YTM Yagami ${{ github.ref_name }}'
