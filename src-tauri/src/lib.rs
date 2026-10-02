@@ -17,6 +17,19 @@ const ALLOWED_DOMAINS: &[&str] = &[
     "ytimg.com",
 ];
 
+/// Ad and measurement hosts that YouTube Music's own ad slots load. They run
+/// inside the page, never in the user's browser: a bare ad-measurement frame
+/// such as `tpc.googlesyndication.com/sodar/...` is a blank page in a tab.
+const AD_DOMAINS: &[&str] = &[
+    "googlesyndication.com",
+    "doubleclick.net",
+    "googleadservices.com",
+    "googletagservices.com",
+    "googletagmanager.com",
+    "google-analytics.com",
+    "2mdn.net",
+];
+
 mod media;
 use media::MediaControlsWrapper;
 
@@ -157,6 +170,14 @@ fn is_regional_google_accounts(host: &str) -> bool {
     }
 }
 
+/// True if `host` is, or is a subdomain of, one of `AD_DOMAINS`.
+pub fn is_ad_host(host: &str) -> bool {
+    let host = host.trim_end_matches('.').to_ascii_lowercase();
+    AD_DOMAINS
+        .iter()
+        .any(|domain| host == *domain || host.ends_with(&format!(".{domain}")))
+}
+
 /// A `window.open` that is the sign-in handoff, not a link the user chose.
 ///
 /// Google finishes passkey sign-in by opening `youtube.com/signin`, which then
@@ -262,7 +283,8 @@ pub fn run() {
                 if !matches!(url.scheme(), "http" | "https") {
                     return true;
                 }
-                if is_allowed_host(url.host_str().unwrap_or_default()) {
+                let host = url.host_str().unwrap_or_default();
+                if is_allowed_host(host) || is_ad_host(host) {
                     return true;
                 }
                 let _ = open::that(url.as_str());
@@ -272,8 +294,11 @@ pub fn run() {
                 // The app has one window. Without this handler, `window.open`
                 // does nothing. The sign-in return is itself a `window.open`
                 // of the player, so that address loads here. Any other http
-                // address goes to the system browser.
-                if should_load_in_window(&url) {
+                // address goes to the system browser, except ad and
+                // measurement hosts, which no user chose to visit.
+                if is_ad_host(url.host_str().unwrap_or_default()) {
+                    // Dropped on purpose.
+                } else if should_load_in_window(&url) {
                     if let Some(window) = handle.get_webview_window("main") {
                         let _ = window.navigate(url);
                     }
@@ -393,6 +418,14 @@ mod tests {
     }
 
     #[test]
+    fn recognizes_ad_hosts() {
+        assert!(is_ad_host("tpc.googlesyndication.com"));
+        assert!(is_ad_host("ad.DOUBLECLICK.net"));
+        assert!(is_ad_host("googleadservices.com."));
+        assert!(!is_ad_host("music.youtube.com"));
+    }
+
+    #[test]
     fn allows_player_and_auth_hosts() {
         assert!(is_allowed_host("music.youtube.com"));
         assert!(is_allowed_host("accounts.google.com"));
@@ -500,6 +533,9 @@ mod tests {
         // Suffix-confusion: the attacker owns the registrable domain.
         assert!(!is_allowed_host("youtube.com.evil.com"));
         assert!(!is_allowed_host("evilgoogle.com"));
+        assert!(!is_ad_host("googlesyndication.com.evil.com"));
+        assert!(!is_ad_host("notdoubleclick.net"));
+        assert!(!is_ad_host(""));
         assert!(!is_allowed_host("accounts.google.com.evil.com"));
         assert!(!is_allowed_host("accounts.google.evil"));
         assert!(!is_allowed_host("accounts.google.net.vn"));
