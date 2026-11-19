@@ -17,16 +17,25 @@ A lightweight desktop app for YouTube Music, built with [Tauri](https://tauri.ap
 - Native desktop window for YouTube Music
 - OS media controls (play/pause/next/previous via keyboard media keys)
 - Track change notifications with album art
-- ~5 MB download (vs ~200 MB for Electron-based alternatives)
+- ~5 MB macOS download (vs ~200 MB for Electron-based alternatives)
 
-## Status
+## Install
 
-macOS is the supported platform. Linux and Windows build from source and run, but
-**native notifications are macOS-only** right now — the notification bridge is
-implemented against `UNUserNotificationCenter`. Media controls work on all three.
+Open the [YTM Yagami v0.1.0 release](https://github.com/chug2k/ytmdesktop/releases/tag/v0.1.0)
+and choose a download under **Assets**.
 
-There is no signed release yet, so the only install path today is building from
-source. See [docs/RELEASING.md](docs/RELEASING.md) for what signing still needs.
+| Your system | File |
+| --- | --- |
+| macOS on Apple silicon (arm64) | `YTM.Yagami_0.1.0_aarch64.dmg` |
+| macOS on Intel (x86_64) | `YTM.Yagami_0.1.0_x64.dmg` |
+| Windows x64 | `YTM.Yagami_0.1.0_x64-setup.exe` |
+| Linux x86_64 (Debian/Ubuntu package) | `YTM.Yagami_0.1.0_amd64.deb` |
+| Linux x86_64 (RPM package) | `YTM.Yagami-0.1.0-1.x86_64.rpm` |
+| Linux x86_64 (AppImage) | `YTM.Yagami_0.1.0_amd64.AppImage` |
+
+macOS is the supported platform and the only one with native track notifications.
+The v0.1.0 macOS apps lack a Developer ID signature and notarization, so Gatekeeper
+may block them. The Windows installer is unsigned.
 
 ## Build from source
 
